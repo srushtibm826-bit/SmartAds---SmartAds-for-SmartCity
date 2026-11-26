@@ -1,0 +1,345 @@
+{% extends 'base.html' %}
+{% block title %}Select Time Slot — {{ ad.product_name }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="{{ url_for('ads.choose_format', ad_id=ad.id) }}" class="btn-surface btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  <div>
+    <h1 class="page-title">Select Time Slot</h1>
+    <p class="page-subtitle">Step 2 of 3 — Choose when your {{ ad_format }} ad runs and for how many days</p>
+  </div>
+</div>
+
+<!-- Progress -->
+<div class="d-flex gap-0 mb-5" style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+  {% for n,label,done,active in [(1,'Format',True,False),(2,'Time Slot',False,True),(3,'Payment',False,False)] %}
+  <div style="flex:1;padding:12px;text-align:center;font-size:.78rem;font-weight:700;
+    background:{{ 'rgba(16,185,129,.15)' if done else 'rgba(99,102,241,0.2)' if active else 'var(--bg-elevated)' }};
+    color:{{ '#10b981' if done else 'var(--accent)' if active else 'var(--text-muted)' }};
+    border-right:{{ '1px solid var(--border)' if not loop.last else 'none' }}">
+    {{ '✓ ' if done else '' }}{{ n }}. {{ label }}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <form method="POST" action="{{ url_for('ads.confirm_slot', ad_id=ad.id) }}" id="slotForm">
+
+      <!-- Ad Format badge -->
+      <div class="card-modern p-4 mb-4">
+        <div class="d-flex align-items-center gap-3">
+          <div style="font-size:2.5rem">{{ '🖼️' if ad_format=='poster' else '🎬' }}</div>
+          <div>
+            <div style="font-weight:700;font-size:1.1rem;color:var(--text)">{{ ad.product_name }}</div>
+            <div style="color:var(--text-muted);font-size:.82rem">
+              {{ ad_format|title }} Ad · {{ location }} ·
+              Base rate: ₹{{ base }}/day × {{ format_mult }}
+            </div>
+          </div>
+          <div class="ms-auto">
+            <span style="background:{{ 'rgba(16,185,129,.15)' if ad_format=='poster' else 'rgba(236,72,153,.15)' }};
+              color:{{ '#10b981' if ad_format=='poster' else '#ec4899' }};
+              border:1px solid {{ 'rgba(16,185,129,.3)' if ad_format=='poster' else 'rgba(236,72,153,.3)' }};
+              padding:4px 12px;border-radius:999px;font-size:.78rem;font-weight:700">
+              {{ '🖼️ Poster (1×)' if ad_format=='poster' else '🎬 Video (2.4×)' }}
+            </span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Slot Tier Selection -->
+      <div class="card-modern p-5 mb-4">
+        <h5 class="section-title mb-4"><i class="bi bi-clock me-2" style="color:var(--accent)"></i>Choose Time Slot</h5>
+
+        <div class="d-flex flex-column gap-3" id="slotCards">
+
+          <!-- PRIME -->
+          <label style="cursor:pointer">
+            <input type="radio" name="slot_type" value="prime" class="d-none" onchange="updateCalc()">
+            <div class="slot-card p-4" id="slot_prime" style="border:2px solid var(--border);border-radius:14px;transition:all .2s">
+              <div class="d-flex align-items-start gap-3">
+                <div style="width:44px;height:44px;border-radius:10px;background:rgba(239,68,68,.15);
+                  display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🔴</div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div style="font-weight:700;font-size:1rem;color:var(--text)">Prime Time</div>
+                    <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:#ef4444">2× rate</div>
+                  </div>
+                  <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px">Peak engagement hours — maximum visibility and audience reach.</div>
+                  <div style="font-size:.78rem;color:var(--text-secondary)">
+                    <i class="bi bi-clock me-1"></i>
+                    {% for slot in examples.prime %}
+                      <span style="background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);
+                        padding:2px 8px;border-radius:6px;margin-right:6px">{{ slot[0] }}–{{ slot[1] }}</span>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </label>
+
+          <!-- NORMAL -->
+          <label style="cursor:pointer">
+            <input type="radio" name="slot_type" value="normal" checked class="d-none" onchange="updateCalc()">
+            <div class="slot-card p-4" id="slot_normal" style="border:2px solid var(--accent);border-radius:14px;transition:all .2s">
+              <div class="d-flex align-items-start gap-3">
+                <div style="width:44px;height:44px;border-radius:10px;background:rgba(99,102,241,.15);
+                  display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🟡</div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div style="font-weight:700;font-size:1rem;color:var(--text)">Normal Time</div>
+                    <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:var(--accent)">1× rate</div>
+                  </div>
+                  <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px">Regular off-peak hours — steady exposure at the best value.</div>
+                  <div style="font-size:.78rem;color:var(--text-secondary)">
+                    <i class="bi bi-clock me-1"></i>
+                    {% for slot in examples.normal %}
+                      <span style="background:rgba(99,102,241,.1);border:1px solid rgba(99,102,241,.2);
+                        padding:2px 8px;border-radius:6px;margin-right:6px">{{ slot[0] }}–{{ slot[1] }}</span>
+                    {% endfor %}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </label>
+
+          <!-- MANUAL -->
+          <label style="cursor:pointer">
+            <input type="radio" name="slot_type" value="manual" class="d-none" onchange="updateCalc();toggleManual(true)">
+            <div class="slot-card p-4" id="slot_manual" style="border:2px solid var(--border);border-radius:14px;transition:all .2s">
+              <div class="d-flex align-items-start gap-3">
+                <div style="width:44px;height:44px;border-radius:10px;background:rgba(6,182,212,.15);
+                  display:flex;align-items:center;justify-content:center;font-size:1.3rem;flex-shrink:0">🔵</div>
+                <div class="flex-grow-1">
+                  <div class="d-flex justify-content-between align-items-center mb-1">
+                    <div style="font-weight:700;font-size:1rem;color:var(--text)">Manual Entry</div>
+                    <div style="font-family:'Syne',sans-serif;font-size:1.1rem;font-weight:800;color:#06b6d4">Custom rate</div>
+                  </div>
+                  <div style="font-size:.82rem;color:var(--text-muted);margin-bottom:10px">Pick your exact start and end times. Rate calculated proportionally per hour.</div>
+                  <!-- Manual time inputs -->
+                  <div id="manualInputs" style="display:none;margin-top:12px">
+                    <div class="row g-3">
+                      <div class="col-6">
+                        <label class="form-label" style="font-size:.75rem">Start Time</label>
+                        <input type="time" name="start_time" id="start_time" class="form-control form-control-sm"
+                               value="09:00" onchange="updateCalc()">
+                      </div>
+                      <div class="col-6">
+                        <label class="form-label" style="font-size:.75rem">End Time</label>
+                        <input type="time" name="end_time" id="end_time" class="form-control form-control-sm"
+                               value="13:00" onchange="updateCalc()">
+                      </div>
+                    </div>
+                    <div id="manualHours" style="font-size:.75rem;color:var(--text-muted);margin-top:8px"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </label>
+        </div>
+
+        <!-- Days Selector -->
+        <div class="mt-5">
+          <h5 class="section-title mb-3"><i class="bi bi-calendar3 me-2" style="color:var(--accent)"></i>Number of Days</h5>
+          <div class="d-flex align-items-center gap-4">
+            <input type="range" name="days" id="daysRange" min="1" max="30" value="1"
+                   style="flex:1;accent-color:var(--accent)" oninput="updateDays(this.value)">
+            <div style="display:flex;align-items:center;gap:8px">
+              <button type="button" onclick="changeDays(-1)"
+                style="width:36px;height:36px;border-radius:50%;background:var(--bg-elevated);
+                border:1px solid var(--border);color:var(--text);cursor:pointer;font-size:1.1rem">−</button>
+              <div id="daysDisplay"
+                style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;
+                color:var(--text);width:60px;text-align:center">1</div>
+              <div style="font-size:.82rem;color:var(--text-muted)">day(s)</div>
+              <button type="button" onclick="changeDays(1)"
+                style="width:36px;height:36px;border-radius:50%;background:var(--bg-elevated);
+                border:1px solid var(--border);color:var(--text);cursor:pointer;font-size:1.1rem">+</button>
+            </div>
+          </div>
+          <input type="hidden" name="days" id="daysHidden" value="1">
+          <!-- Quick day presets -->
+          <div class="d-flex gap-2 mt-3 flex-wrap">
+            {% for d,label in [(1,'1 Day'),(3,'3 Days'),(7,'1 Week'),(14,'2 Weeks'),(30,'1 Month')] %}
+            <button type="button" onclick="setDays({{ d }})"
+              class="day-preset" data-days="{{ d }}"
+              style="padding:6px 14px;border-radius:8px;border:1px solid var(--border);
+              background:var(--bg-elevated);color:var(--text-muted);cursor:pointer;
+              font-size:.78rem;font-weight:600;transition:all .2s">{{ label }}</button>
+            {% endfor %}
+          </div>
+        </div>
+      </div>
+
+      <button type="submit" class="btn-gradient w-100 py-3" style="font-size:1rem">
+        <i class="bi bi-credit-card me-2"></i>Continue to Payment
+      </button>
+    </form>
+  </div>
+
+  <!-- Live Price Calculator -->
+  <div class="col-12 col-lg-5">
+    <div class="card-modern p-5" style="position:sticky;top:100px">
+      <h5 class="section-title mb-4">
+        <i class="bi bi-calculator me-2" style="color:var(--accent)"></i>Live Price
+      </h5>
+
+      <div id="calcLoading" style="display:none;text-align:center;padding:20px">
+        <div class="spinner-border text-primary" style="width:2rem;height:2rem"></div>
+      </div>
+
+      <div id="priceBreakdown">
+        <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:20px">
+          <div class="d-flex justify-content-between" style="font-size:.85rem;color:var(--text-secondary)">
+            <span>Location</span><span style="color:var(--text)">{{ location }}</span>
+          </div>
+          <div class="d-flex justify-content-between" style="font-size:.85rem;color:var(--text-secondary)">
+            <span>Format</span>
+            <span style="color:{{ '#10b981' if ad_format=='poster' else '#ec4899' }}">
+              {{ ad_format|title }} ({{ '1×' if ad_format=='poster' else '2.4×' }})
+            </span>
+          </div>
+          <div id="calc_slot" class="d-flex justify-content-between" style="font-size:.85rem;color:var(--text-secondary)">
+            <span>Slot</span><span style="color:var(--text)">Normal (1×)</span>
+          </div>
+          <div id="calc_days" class="d-flex justify-content-between" style="font-size:.85rem;color:var(--text-secondary)">
+            <span>Days</span><span style="color:var(--text)">1 day</span>
+          </div>
+          <hr style="border-color:var(--border)">
+          <div id="calc_subtotal" class="d-flex justify-content-between" style="font-size:.85rem;color:var(--text-secondary)">
+            <span>Subtotal</span><span style="color:var(--text)">₹{{ (base * format_mult)|round|int }}</span>
+          </div>
+          <div id="calc_gst" class="d-flex justify-content-between" style="font-size:.85rem;color:var(--text-secondary)">
+            <span>GST (18%)</span><span style="color:var(--text)">₹{{ (base * format_mult * 0.18)|round|int }}</span>
+          </div>
+        </div>
+
+        <div style="background:var(--accent-glow);border:1px solid rgba(99,102,241,.3);
+             border-radius:14px;padding:20px;text-align:center">
+          <div style="font-size:.75rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px">
+            Total Amount
+          </div>
+          <div id="calc_total" style="font-family:'Syne',sans-serif;font-size:3rem;font-weight:800;
+               background:linear-gradient(135deg,#6366f1,#ec4899);-webkit-background-clip:text;
+               -webkit-text-fill-color:transparent">
+            ₹{{ (base * format_mult * 1.18)|round|int }}
+          </div>
+          <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">incl. GST · INR</div>
+        </div>
+
+        <div id="calc_breakdown" style="margin-top:16px;font-size:.75rem;color:var(--text-muted);
+             background:var(--bg-elevated);border-radius:10px;padding:12px;line-height:2"></div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const LOCATION  = {{ location|tojson }};
+const AD_FORMAT = {{ ad_format|tojson }};
+const BASE      = {{ base }};
+const FORMAT_M  = {{ format_mult }};
+let currentDays = 1;
+let calcTimer   = null;
+
+// Slot card visual selection
+document.querySelectorAll('input[name="slot_type"]').forEach(radio => {
+  radio.addEventListener('change', () => {
+    document.querySelectorAll('.slot-card').forEach(c => {
+      c.style.border = '2px solid var(--border)';
+    });
+    const card = document.getElementById('slot_' + radio.value);
+    if (card) card.style.border = '2px solid ' + (radio.value==='prime'?'#ef4444':radio.value==='normal'?'var(--accent)':'#06b6d4');
+    if (radio.value !== 'manual') toggleManual(false);
+  });
+});
+// Default: highlight normal
+document.getElementById('slot_normal').style.border = '2px solid var(--accent)';
+
+function toggleManual(show) {
+  document.getElementById('manualInputs').style.display = show ? 'block' : 'none';
+  if (show) updateManualHours();
+}
+
+function updateManualHours() {
+  const st = document.getElementById('start_time').value;
+  const et = document.getElementById('end_time').value;
+  if (st && et) {
+    const [sh,sm] = st.split(':').map(Number);
+    const [eh,em] = et.split(':').map(Number);
+    const hrs = ((eh*60+em)-(sh*60+sm))/60;
+    document.getElementById('manualHours').textContent =
+      hrs>0 ? `Duration: ${hrs.toFixed(1)} hours · Rate = base × ${(hrs/8).toFixed(2)}` : 'End time must be after start time';
+  }
+}
+
+function updateDays(val) {
+  currentDays = parseInt(val);
+  document.getElementById('daysDisplay').textContent = currentDays;
+  document.getElementById('daysHidden').value = currentDays;
+  document.getElementById('daysRange').value  = currentDays;
+  document.querySelectorAll('.day-preset').forEach(b => {
+    b.style.background = parseInt(b.dataset.days)===currentDays ? 'var(--accent-glow)' : 'var(--bg-elevated)';
+    b.style.color       = parseInt(b.dataset.days)===currentDays ? 'var(--accent)' : 'var(--text-muted)';
+    b.style.borderColor = parseInt(b.dataset.days)===currentDays ? 'var(--accent)' : 'var(--border)';
+  });
+  updateCalc();
+}
+
+function setDays(d) { updateDays(d); }
+
+function changeDays(delta) {
+  const newVal = Math.max(1, Math.min(30, currentDays + delta));
+  updateDays(newVal);
+}
+
+function updateCalc() {
+  clearTimeout(calcTimer);
+  calcTimer = setTimeout(doCalc, 300);
+  // Update manual hours if visible
+  const manualRadio = document.querySelector('input[value="manual"]');
+  if (manualRadio && manualRadio.checked) updateManualHours();
+}
+
+async function doCalc() {
+  const slotRadio = document.querySelector('input[name="slot_type"]:checked');
+  const slotType  = slotRadio ? slotRadio.value : 'normal';
+  const startTime = document.getElementById('start_time')?.value || '';
+  const endTime   = document.getElementById('end_time')?.value || '';
+
+  document.getElementById('calcLoading').style.display = 'block';
+
+  try {
+    const resp = await fetch('{{ url_for("payment.api_calculate") }}', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({
+        location: LOCATION, ad_format: AD_FORMAT,
+        slot_type: slotType, days: currentDays,
+        start_time: startTime, end_time: endTime,
+      })
+    });
+    const d = await resp.json();
+
+    // Update slot label
+    const slotLabels = {prime:'Prime (2×)',normal:'Normal (1×)',manual:`Manual (${d.slot_mult}×)`};
+    document.getElementById('calc_slot').querySelector('span:last-child').textContent = slotLabels[slotType] || slotType;
+    document.getElementById('calc_days').querySelector('span:last-child').textContent = `${currentDays} day${currentDays>1?'s':''}`;
+    document.getElementById('calc_subtotal').querySelector('span:last-child').textContent = `₹${d.subtotal.toLocaleString('en-IN')}`;
+    document.getElementById('calc_gst').querySelector('span:last-child').textContent     = `₹${d.gst.toLocaleString('en-IN')}`;
+    document.getElementById('calc_total').textContent = `₹${d.total.toLocaleString('en-IN')}`;
+    document.getElementById('calc_breakdown').innerHTML = d.breakdown.join('<br>');
+
+  } catch(e) {
+    console.error('Calc error:', e);
+  } finally {
+    document.getElementById('calcLoading').style.display = 'none';
+  }
+}
+
+// Initial calculation
+updateCalc();
+</script>
+{% endblock %}

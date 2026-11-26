@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block title %}Motion Video — {{ ad.title }}{% endblock %}
+{% block extra_css %}<style>.vid-page{background:linear-gradient(135deg,#0a0a18,#0d0d22);min-height:100vh;padding:32px 0 60px}</style>{% endblock %}
+{% block content %}
+<div class="vid-page"><div class="container" style="max-width:960px">
+  <div class="d-flex align-items-center gap-3 mb-4">
+    <a href="{{ url_for('ads.preview', ad_id=ad.id) }}" class="btn-surface"><i class="bi bi-arrow-left me-1"></i>Back</a>
+    <div><h1 class="page-title" style="color:white">{{ ad.title }}</h1><p class="page-subtitle">15-second cinematic motion ad</p></div>
+  </div>
+  <div id="adVideoContainer" class="mb-4"></div>
+  <div class="tip-box p-3 rounded" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.2)">
+    Want a real talking presenter? <a href="{{ url_for('video.studio', ad_id=ad.id) }}" style="color:var(--accent)">Open D-ID Avatar Studio →</a>
+  </div>
+</div></div>
+{% endblock %}
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/advideo.js') }}"></script>
+<script>
+const adData = {
+  title: {{ ad.title|tojson }}, product_name: {{ ad.product_name|tojson }},
+  category: {{ ad.category|tojson }}, offer: {{ (ad.offer or '')|tojson }},
+  generated_text: {{ (ad.generated_text or '')|tojson }},
+  slogans: {{ ad.get_slogans()|tojson }},
+  theme_color: {{ (ad.theme_color or '#6366f1')|tojson }},
+  product_image_url: '',
+};
+window.addEventListener('DOMContentLoaded', () => { window.vp = window.createAdVideo('adVideoContainer', adData); });
+</script>
+{% endblock %}

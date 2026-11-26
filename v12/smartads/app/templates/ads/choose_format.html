@@ -1,0 +1,139 @@
+{% extends 'base.html' %}
+{% block title %}Choose Format — {{ ad.product_name }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="{{ url_for('ads.create') }}" class="btn-surface btn-sm"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  <div>
+    <h1 class="page-title">Choose Ad Format</h1>
+    <p class="page-subtitle">Step 1 of 3 — Select POSTER or VIDEO for "{{ ad.product_name }}"</p>
+  </div>
+</div>
+
+<!-- Progress -->
+<div class="d-flex gap-0 mb-5" style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+  {% for n,label,active in [(1,'Format',True),(2,'Time Slot',False),(3,'Payment',False)] %}
+  <div style="flex:1;padding:12px;text-align:center;font-size:.78rem;font-weight:700;
+    background:{{ 'rgba(99,102,241,0.2)' if active else 'var(--bg-elevated)' }};
+    color:{{ 'var(--accent)' if active else 'var(--text-muted)' }};
+    border-right:{{ '1px solid var(--border)' if not loop.last else 'none' }}">
+    {{ n }}. {{ label }}
+  </div>
+  {% endfor %}
+</div>
+
+<form method="POST" action="{{ url_for('ads.set_format', ad_id=ad.id) }}">
+  <!-- Location selector -->
+  <div class="card-modern p-4 mb-4">
+    <h5 class="section-title mb-3"><i class="bi bi-geo-alt me-2" style="color:var(--accent)"></i>Display Location</h5>
+    <select name="location" class="form-select" style="max-width:400px" onchange="updatePrices(this.value)">
+      {% for loc in locations %}
+      <option value="{{ loc }}" {{ 'selected' if loc == (ad.location or locations[0]) else '' }}>{{ loc }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <!-- Format Cards -->
+  <div class="row g-4 mb-5">
+    <!-- POSTER -->
+    <div class="col-12 col-md-6">
+      <label style="cursor:pointer;display:block;height:100%">
+        <input type="radio" name="ad_format" value="poster" checked class="d-none" id="fmt_poster" onchange="selectFormat('poster')">
+        <div class="card-modern p-5 h-100 format-card" id="card_poster"
+             style="border:2px solid var(--accent);transition:all .2s;text-align:center">
+          <div style="font-size:4rem;margin-bottom:16px">🖼️</div>
+          <h3 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;color:var(--text);margin-bottom:8px">
+            POSTER
+          </h3>
+          <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:24px">
+            Static visual banner with animated preview. Best for display ads, billboards, and digital screens.
+          </p>
+          <div style="background:rgba(16,185,129,.1);border:1px solid rgba(16,185,129,.3);
+               border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Starting from</div>
+            <div id="poster_price" style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:#10b981">
+              ₹{{ (base * poster_mult)|int }}<span style="font-size:.9rem">/day</span>
+            </div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">+ 18% GST · Slot pricing applies</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;text-align:left;font-size:.82rem;color:var(--text-secondary)">
+            <div><i class="bi bi-check-circle-fill me-2" style="color:#10b981"></i>Instant display</div>
+            <div><i class="bi bi-check-circle-fill me-2" style="color:#10b981"></i>Works on all screens</div>
+            <div><i class="bi bi-check-circle-fill me-2" style="color:#10b981"></i>1× base rate</div>
+            <div><i class="bi bi-check-circle-fill me-2" style="color:#10b981"></i>Download as HTML</div>
+          </div>
+          <div id="poster_check" style="margin-top:20px;background:var(--accent);color:white;
+               border-radius:8px;padding:10px;font-weight:700;font-size:.875rem">
+            ✓ Selected
+          </div>
+        </div>
+      </label>
+    </div>
+
+    <!-- VIDEO -->
+    <div class="col-12 col-md-6">
+      <label style="cursor:pointer;display:block;height:100%">
+        <input type="radio" name="ad_format" value="video" class="d-none" id="fmt_video" onchange="selectFormat('video')">
+        <div class="card-modern p-5 h-100 format-card" id="card_video"
+             style="border:2px solid var(--border);transition:all .2s;text-align:center">
+          <div style="font-size:4rem;margin-bottom:16px">🎬</div>
+          <h3 style="font-family:'Syne',sans-serif;font-weight:800;font-size:1.6rem;color:var(--text);margin-bottom:8px">
+            VIDEO
+          </h3>
+          <p style="color:var(--text-muted);font-size:.875rem;margin-bottom:24px">
+            Animated cinematic video ad + AI talking avatar option. Maximum engagement and recall.
+          </p>
+          <div style="background:rgba(236,72,153,.1);border:1px solid rgba(236,72,153,.3);
+               border-radius:12px;padding:16px;margin-bottom:16px">
+            <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px">Starting from</div>
+            <div id="video_price" style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:#ec4899">
+              ₹{{ (base * video_mult)|int }}<span style="font-size:.9rem">/day</span>
+            </div>
+            <div style="font-size:.72rem;color:var(--text-muted);margin-top:4px">+ 18% GST · Slot pricing applies</div>
+          </div>
+          <div style="display:flex;flex-direction:column;gap:8px;text-align:left;font-size:.82rem;color:var(--text-secondary)">
+            <div><i class="bi bi-check-circle-fill me-2" style="color:#ec4899"></i>Cinematic motion graphics</div>
+            <div><i class="bi bi-check-circle-fill me-2" style="color:#ec4899"></i>D-ID AI talking avatar</div>
+            <div><i class="bi bi-check-circle-fill me-2" style="color:#ec4899"></i>2.4× base rate</div>
+            <div><i class="bi bi-check-circle-fill me-2" style="color:#ec4899"></i>Export as MP4</div>
+          </div>
+          <div id="video_check" style="margin-top:20px;background:var(--border);color:var(--text-muted);
+               border-radius:8px;padding:10px;font-weight:700;font-size:.875rem">
+            Click to Select
+          </div>
+        </div>
+      </label>
+    </div>
+  </div>
+
+  <div class="d-flex justify-content-center">
+    <button type="submit" class="btn-gradient px-5 py-3" style="font-size:1rem">
+      <i class="bi bi-arrow-right-circle me-2"></i>Continue to Time Slot Selection
+    </button>
+  </div>
+</form>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+const BASE_RATES = {{ {'Mall Billboard':400,'City Center Screen':650,'Food Court Display':250,'Highway Billboard':500,'Airport Terminal':900,'Metro Station':350}|tojson }};
+let selectedFmt = 'poster';
+
+function selectFormat(fmt) {
+  selectedFmt = fmt;
+  document.getElementById('card_poster').style.border = fmt==='poster' ? '2px solid var(--accent)' : '2px solid var(--border)';
+  document.getElementById('card_video').style.border  = fmt==='video'  ? '2px solid #ec4899' : '2px solid var(--border)';
+  document.getElementById('poster_check').style.background = fmt==='poster' ? 'var(--accent)' : 'var(--border)';
+  document.getElementById('poster_check').style.color = fmt==='poster' ? 'white' : 'var(--text-muted)';
+  document.getElementById('poster_check').textContent = fmt==='poster' ? '✓ Selected' : 'Click to Select';
+  document.getElementById('video_check').style.background = fmt==='video' ? '#ec4899' : 'var(--border)';
+  document.getElementById('video_check').style.color = fmt==='video' ? 'white' : 'var(--text-muted)';
+  document.getElementById('video_check').textContent = fmt==='video' ? '✓ Selected' : 'Click to Select';
+}
+
+function updatePrices(location) {
+  const base = BASE_RATES[location] || 400;
+  document.getElementById('poster_price').innerHTML = `₹${Math.round(base*1.0)}<span style="font-size:.9rem">/day</span>`;
+  document.getElementById('video_price').innerHTML  = `₹${Math.round(base*2.4)}<span style="font-size:.9rem">/day</span>`;
+}
+</script>
+{% endblock %}

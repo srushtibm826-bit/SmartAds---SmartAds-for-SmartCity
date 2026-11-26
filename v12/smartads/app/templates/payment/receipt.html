@@ -1,0 +1,132 @@
+{% extends 'base.html' %}
+{% block title %}Payment Receipt — SmartAds{% endblock %}
+{% block content %}
+<div style="max-width:700px;margin:0 auto">
+
+  <!-- Success Banner -->
+  <div style="background:linear-gradient(135deg,rgba(16,185,129,.15),rgba(16,185,129,.05));
+    border:1px solid rgba(16,185,129,.3);border-radius:20px;padding:40px;text-align:center;margin-bottom:28px">
+    <div style="font-size:4rem;margin-bottom:12px">✅</div>
+    <h1 style="font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;color:var(--text);margin-bottom:8px">
+      Payment Successful!
+    </h1>
+    <p style="color:var(--text-secondary);font-size:1rem;margin-bottom:20px">
+      Your ad has been submitted for review. You'll be notified when it goes live.
+    </p>
+    <div style="display:inline-block;background:rgba(0,0,0,.3);border-radius:10px;padding:10px 24px">
+      <span style="font-family:monospace;font-size:.9rem;color:#10b981;font-weight:700">{{ payment.transaction_id }}</span>
+    </div>
+  </div>
+
+  <!-- Summary Card -->
+  <div class="card-modern p-5 mb-4">
+    <div class="d-flex justify-content-between align-items-start mb-4 flex-wrap gap-3">
+      <div>
+        <h2 class="section-title mb-1">Receipt Summary</h2>
+        <div style="font-size:.82rem;color:var(--text-muted)">{{ payment.created_at.strftime('%d %B %Y, %I:%M %p') }}</div>
+      </div>
+      <a href="{{ url_for('payment.download_receipt', payment_id=payment.id) }}"
+         class="btn-gradient" style="font-size:.9rem">
+        <i class="bi bi-file-earmark-pdf me-2"></i>Download PDF Receipt
+      </a>
+    </div>
+
+    <div class="row g-4 mb-4">
+      <!-- Ad Info -->
+      <div class="col-12 col-md-6">
+        <div style="background:var(--bg-elevated);border-radius:12px;padding:20px;height:100%">
+          <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:12px">Ad Details</div>
+          {% if ad %}
+          <div style="font-weight:700;color:var(--text);margin-bottom:6px">{{ ad.title }}</div>
+          <div style="font-size:.82rem;color:var(--text-secondary);margin-bottom:4px">{{ ad.product_name }}</div>
+          <div class="d-flex gap-2 flex-wrap mt-3">
+            <span style="background:{{ 'rgba(16,185,129,.12)' if ad.ad_format=='poster' else 'rgba(236,72,153,.12)' }};
+              color:{{ '#10b981' if ad.ad_format=='poster' else '#ec4899' }};
+              border:1px solid {{ 'rgba(16,185,129,.25)' if ad.ad_format=='poster' else 'rgba(236,72,153,.25)' }};
+              padding:3px 10px;border-radius:6px;font-size:.75rem;font-weight:700">
+              {{ '🖼️ Poster' if ad.ad_format=='poster' else '🎬 Video' }}
+            </span>
+            <span style="background:var(--bg-card);border:1px solid var(--border);
+              padding:3px 10px;border-radius:6px;font-size:.75rem;color:var(--text-secondary)">
+              📍 {{ ad.location or '—' }}
+            </span>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Slot Info -->
+      <div class="col-12 col-md-6">
+        <div style="background:var(--bg-elevated);border-radius:12px;padding:20px;height:100%">
+          <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:12px">Slot Details</div>
+          <div style="display:flex;flex-direction:column;gap:8px">
+            <div class="d-flex justify-content-between" style="font-size:.85rem">
+              <span style="color:var(--text-muted)">Slot Type</span>
+              <span style="color:var(--text);font-weight:600">
+                {% set slot = slot_meta.get('slot_type','normal') %}
+                {{ '🔴 Prime' if slot=='prime' else '🟡 Normal' if slot=='normal' else '🔵 Manual' }}
+              </span>
+            </div>
+            {% if slot_meta.get('slot_type')=='manual' and slot_meta.get('start_time') %}
+            <div class="d-flex justify-content-between" style="font-size:.85rem">
+              <span style="color:var(--text-muted)">Time</span>
+              <span style="color:var(--text)">{{ slot_meta.start_time }}–{{ slot_meta.end_time }}</span>
+            </div>
+            {% endif %}
+            <div class="d-flex justify-content-between" style="font-size:.85rem">
+              <span style="color:var(--text-muted)">Days</span>
+              <span style="color:var(--text);font-weight:600">{{ slot_meta.get('days',1) }} day(s)</span>
+            </div>
+            <div class="d-flex justify-content-between" style="font-size:.85rem">
+              <span style="color:var(--text-muted)">Method</span>
+              <span style="color:var(--text)">{{ payment.method.title() }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Price Breakdown -->
+    <div style="background:var(--bg-elevated);border-radius:12px;padding:20px;margin-bottom:4px">
+      <div style="font-size:.72rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:14px">Price Breakdown</div>
+      {% set pricing = slot_meta.get('pricing', {}) %}
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">Subtotal</span>
+          <span style="color:var(--text)">₹{{ pricing.get('subtotal', (payment.amount/1.18))|int }}</span>
+        </div>
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">GST (18%)</span>
+          <span style="color:var(--text)">₹{{ pricing.get('gst', (payment.amount - payment.amount/1.18))|int }}</span>
+        </div>
+        <div style="border-top:1px solid var(--border);padding-top:10px;margin-top:4px">
+          <div class="d-flex justify-content-between">
+            <span style="font-weight:700;color:var(--text)">Total Paid</span>
+            <span style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;
+              background:linear-gradient(135deg,#6366f1,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+              ₹{{ payment.amount|int }}
+            </span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Action Buttons -->
+  <div class="d-flex gap-3 flex-wrap justify-content-center">
+    <a href="{{ url_for('payment.download_receipt', payment_id=payment.id) }}"
+       class="btn-gradient px-5 py-3" style="font-size:.95rem">
+      <i class="bi bi-file-earmark-pdf me-2"></i>Download PDF Receipt
+    </a>
+    {% if ad %}
+    <a href="{{ url_for('ads.preview', ad_id=ad.id) }}" class="btn-surface px-4 py-3">
+      <i class="bi bi-eye me-2"></i>View Ad
+    </a>
+    {% endif %}
+    <a href="{{ url_for('ads.list_ads') }}" class="btn-surface px-4 py-3">
+      <i class="bi bi-collection me-2"></i>My Ads
+    </a>
+  </div>
+
+</div>
+{% endblock %}

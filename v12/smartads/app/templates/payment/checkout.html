@@ -1,0 +1,119 @@
+{% extends 'base.html' %}
+{% block title %}Payment Checkout{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4">
+  <a href="{{ url_for('ads.select_slot', ad_id=ad.id) }}" class="btn-surface"><i class="bi bi-arrow-left me-1"></i>Back</a>
+  <div>
+    <h1 class="page-title">Payment Checkout</h1>
+    <p class="page-subtitle">Step 3 of 3 — Confirm and pay</p>
+  </div>
+</div>
+
+<!-- Progress -->
+<div class="d-flex gap-0 mb-5" style="border-radius:10px;overflow:hidden;border:1px solid var(--border)">
+  {% for n,label,done,active in [(1,'Format',True,False),(2,'Time Slot',True,False),(3,'Payment',False,True)] %}
+  <div style="flex:1;padding:12px;text-align:center;font-size:.78rem;font-weight:700;
+    background:{{ 'rgba(16,185,129,.15)' if done else 'rgba(99,102,241,0.2)' if active else 'var(--bg-elevated)' }};
+    color:{{ '#10b981' if done else 'var(--accent)' if active else 'var(--text-muted)' }};
+    border-right:{{ '1px solid var(--border)' if not loop.last else 'none' }}">
+    {{ '✓ ' if done else '' }}{{ n }}. {{ label }}
+  </div>
+  {% endfor %}
+</div>
+
+<div class="row g-4">
+  <div class="col-12 col-md-7">
+    <div class="card-modern p-5 mb-4">
+      <h5 class="section-title mb-4"><i class="bi bi-credit-card me-2" style="color:var(--accent)"></i>Payment Method</h5>
+      <form method="POST">
+        <div class="d-flex flex-column gap-3 mb-4">
+          {% for val,label,icon in [('card','Credit / Debit Card','bi-credit-card-2-front'),('upi','UPI Payment','bi-phone'),('netbanking','Net Banking','bi-bank')] %}
+          <label style="cursor:pointer">
+            <input type="radio" name="method" value="{{ val }}" {{ 'checked' if val=='card' else '' }} class="d-none">
+            <div onclick="selectMethod('{{ val }}')" id="pay_{{ val }}"
+              style="border:2px solid {{ 'var(--accent)' if val=='card' else 'var(--border)' }};
+              border-radius:12px;padding:16px 20px;display:flex;align-items:center;gap:14px;transition:all .2s">
+              <i class="bi {{ icon }}" style="font-size:1.4rem;color:var(--accent)"></i>
+              <span style="font-weight:600;color:var(--text)">{{ label }}</span>
+              {% if val=='upi' %}<span style="margin-left:auto;font-size:.75rem;color:var(--success)">Instant</span>{% endif %}
+            </div>
+          </label>
+          {% endfor %}
+        </div>
+        <button type="submit" class="btn-gradient w-100 py-3 justify-content-center" style="font-size:1rem">
+          <i class="bi bi-shield-check me-2"></i>Pay ₹{{ pricing.total|int }} Securely
+        </button>
+        <div class="text-center mt-3" style="font-size:.75rem;color:var(--text-muted)">
+          <i class="bi bi-lock me-1"></i>Simulated payment — no real charges
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-12 col-md-5">
+    <div class="card-modern p-5">
+      <h5 class="section-title mb-4">Order Summary</h5>
+      <div style="margin-bottom:16px;padding-bottom:16px;border-bottom:1px solid var(--border)">
+        <div style="font-weight:700;color:var(--text)">{{ ad.title }}</div>
+        <div style="font-size:.82rem;color:var(--text-muted);margin-top:4px">{{ ad.product_name }} · {{ ad.category }}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px">
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">Format</span>
+          <span style="color:{{ '#10b981' if ad.ad_format=='poster' else '#ec4899' }};font-weight:600">
+            {{ '🖼️ Poster' if ad.ad_format=='poster' else '🎬 Video' }}
+          </span>
+        </div>
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">Location</span>
+          <span style="color:var(--text)">{{ ad.location }}</span>
+        </div>
+        {% if slot_meta %}
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">Slot</span>
+          <span style="color:var(--text)">{{ slot_meta.get('slot_type','normal')|title }}</span>
+        </div>
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">Days</span>
+          <span style="color:var(--text)">{{ slot_meta.get('days',1) }} day(s)</span>
+        </div>
+        {% if slot_meta.get('slot_type')=='manual' and slot_meta.get('start_time') %}
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">Time</span>
+          <span style="color:var(--text)">{{ slot_meta.start_time }}–{{ slot_meta.end_time }}</span>
+        </div>
+        {% endif %}
+        {% endif %}
+        <hr style="border-color:var(--border)">
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">Subtotal</span>
+          <span style="color:var(--text)">₹{{ pricing.subtotal|int }}</span>
+        </div>
+        <div class="d-flex justify-content-between" style="font-size:.85rem">
+          <span style="color:var(--text-muted)">GST (18%)</span>
+          <span style="color:var(--text)">₹{{ pricing.gst|int }}</span>
+        </div>
+      </div>
+      <div style="background:var(--accent-glow);border:1px solid rgba(99,102,241,.3);
+           border-radius:14px;padding:20px;text-align:center">
+        <div style="font-size:.72rem;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Total</div>
+        <div style="font-family:'Syne',sans-serif;font-size:2.8rem;font-weight:800;
+             background:linear-gradient(135deg,#6366f1,#ec4899);-webkit-background-clip:text;-webkit-text-fill-color:transparent">
+          ₹{{ pricing.total|int }}
+        </div>
+        <div style="font-size:.72rem;color:var(--text-muted)">INR · incl. all taxes</div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+function selectMethod(method) {
+  ['card','upi','netbanking'].forEach(m => {
+    const el = document.getElementById('pay_' + m);
+    if (el) el.style.border = m===method ? '2px solid var(--accent)' : '2px solid var(--border)';
+  });
+  document.querySelector(`input[value="${method}"]`).checked = true;
+}
+</script>
+{% endblock %}

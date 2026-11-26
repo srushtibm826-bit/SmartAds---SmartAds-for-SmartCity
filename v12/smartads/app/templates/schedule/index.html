@@ -1,0 +1,17 @@
+{% extends 'base.html' %}{% block title %}Schedules{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between mb-4"><h1 class="page-title">My Schedules</h1></div>
+<div class="card-modern p-0 overflow-hidden">
+{% if schedules %}
+<table class="table-dark-custom"><thead><tr><th>Ad</th><th>Location</th><th>Start</th><th>End</th><th>Status</th><th>Action</th></tr></thead>
+<tbody>{% for s in schedules %}<tr>
+<td style="color:var(--text);font-size:.85rem">{{ s.advertisement.title[:35] if s.advertisement else '—' }}</td>
+<td style="color:var(--text-secondary);font-size:.82rem">{{ s.location }}</td>
+<td style="color:var(--text-muted);font-size:.78rem">{{ s.start_time.strftime('%d %b %Y %H:%M') }}</td>
+<td style="color:var(--text-muted);font-size:.78rem">{{ s.end_time.strftime('%d %b %Y %H:%M') }}</td>
+<td><span class="badge bg-{{ 'success' if s.is_active else 'secondary' }}">{{ 'Active' if s.is_active else 'Inactive' }}</span></td>
+<td>{% if s.is_active %}<form method="POST" action="{{ url_for('schedule.cancel', sched_id=s.id) }}" style="display:inline">
+<button type="submit" class="btn btn-sm btn-warning">Cancel</button></form>{% endif %}</td>
+</tr>{% endfor %}</tbody></table>
+{% else %}<div style="padding:60px;text-align:center;color:var(--text-muted)"><i class="bi bi-calendar" style="font-size:3rem;display:block;margin-bottom:12px"></i>No schedules yet.</div>{% endif %}
+</div>{% endblock %}

@@ -1,0 +1,134 @@
+{% extends 'base.html' %}
+{% block title %}Create Ad — SmartAds{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Create Advertisement</h1>
+<p class="page-subtitle mb-4">AI-powered ad generation — then choose Poster or Video</p>
+<div class="row g-4">
+  <div class="col-12 col-lg-7">
+    <div class="card-modern p-5">
+      <form method="POST" action="{{ url_for('ads.select_format') }}" id="adForm">
+        <div class="mb-3">
+          <label class="form-label">Product / Brand Name *</label>
+          <input type="text" name="product_name" id="product_name" class="form-control" placeholder="e.g. Silk Saree Collection" required>
+        </div>
+        <div class="row g-3 mb-3">
+          <div class="col-6">
+            <label class="form-label">Category *</label>
+            <select name="category" id="category" class="form-select">
+              {% for c in categories %}<option value="{{ c }}">{{ c }}</option>{% endfor %}
+            </select>
+          </div>
+          <div class="col-6">
+            <label class="form-label">Display Location *</label>
+            <select name="location" class="form-select">
+              {% for l in locations %}<option value="{{ l }}">{{ l }}</option>{% endfor %}
+            </select>
+          </div>
+        </div>
+        <div class="mb-3">
+          <label class="form-label">Special Offer</label>
+          <input type="text" name="offer" id="offer" class="form-control" placeholder="e.g. 30% Off This Weekend">
+        </div>
+        <div class="mb-4">
+          <label class="form-label">Description (optional)</label>
+          <textarea name="description" class="form-control" rows="2" placeholder="Brief product description..."></textarea>
+        </div>
+        <button type="button" onclick="generateAd()" class="btn-surface w-100 mb-3 justify-content-center py-3" id="genBtn">
+          <i class="bi bi-magic me-2"></i>Generate Ad with AI
+        </button>
+        <div id="genResult" style="display:none">
+          <div class="mb-3">
+            <label class="form-label">Generated Ad Text</label>
+            <textarea name="generated_text" id="generated_text" class="form-control" rows="4"></textarea>
+          </div>
+          <div class="mb-3">
+            <label class="form-label">Slogans</label>
+            <input type="text" name="slogans" id="slogans_display" class="form-control" readonly>
+            <input type="hidden" name="slogans" id="slogans_json">
+          </div>
+          <div class="mb-4">
+            <label class="form-label">Theme Color</label>
+            <div class="d-flex gap-2 flex-wrap" id="colorPicker">
+              {% for color in theme_colors %}
+              <button type="button" onclick="setColor('{{ color }}', this)"
+                style="width:32px;height:32px;border-radius:50%;background:{{ color }};border:3px solid transparent;cursor:pointer"
+                data-color="{{ color }}"></button>
+              {% endfor %}
+            </div>
+            <input type="hidden" name="theme_color" id="theme_color" value="{{ theme_colors[0] }}">
+            <input type="hidden" name="template_style" value="modern">
+          </div>
+          <button type="submit" class="btn-gradient w-100 justify-content-center py-3" style="font-size:1rem">
+            <i class="bi bi-arrow-right-circle me-2"></i>Choose Poster or Video →
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+  <div class="col-12 col-lg-5">
+    <div class="card-modern p-5 mb-4">
+      <h5 class="section-title mb-3">📋 How It Works</h5>
+      {% for n,title,desc in [(1,'Generate with AI','Enter product details → AI writes your ad text, slogans, and picks a theme.'),(2,'Choose Format','Select POSTER (cheaper) or VIDEO (more impact). Prices shown upfront.'),(3,'Pick Time Slot','Choose Prime, Normal, or Custom hours + number of days.'),(4,'Pay & Go Live','Secure payment → ad submitted for review → goes live on LED screens.')] %}
+      <div class="d-flex gap-3 mb-4">
+        <div style="width:32px;height:32px;border-radius:50%;background:var(--accent);color:white;
+          display:flex;align-items:center;justify-content:center;font-weight:800;font-size:.85rem;flex-shrink:0">{{ n }}</div>
+        <div>
+          <div style="font-weight:700;color:var(--text);font-size:.9rem;margin-bottom:3px">{{ title }}</div>
+          <div style="font-size:.8rem;color:var(--text-muted)">{{ desc }}</div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="card-modern p-4">
+      <h5 class="section-title mb-3">💰 Price Preview</h5>
+      <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:12px">Rates vary by location, format, and slot. Example (Mall Billboard, 1 day):</div>
+      {% for label,price,color in [('🖼️ Poster + Normal','₹472','#10b981'),('🖼️ Poster + Prime','₹944','#f59e0b'),('🎬 Video + Normal','₹1,133','#ec4899'),('🎬 Video + Prime','₹2,266','#ef4444')] %}
+      <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border);font-size:.82rem">
+        <span style="color:var(--text-secondary)">{{ label }}</span>
+        <span style="font-weight:700;color:{{ color }}">{{ price }}<span style="font-size:.7rem;color:var(--text-muted)"> +GST</span></span>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>
+async function generateAd() {
+  const product  = document.getElementById('product_name').value.trim();
+  const category = document.getElementById('category').value;
+  const offer    = document.getElementById('offer').value.trim();
+  if (!product) { alert('Please enter a product name.'); return; }
+  const btn = document.getElementById('genBtn');
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Generating...';
+  btn.disabled = true;
+  try {
+    const resp = await fetch('{{ url_for("ads.generate") }}', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({product_name:product, category, offer})
+    });
+    const data = await resp.json();
+    document.getElementById('generated_text').value = data.generated_text || '';
+    document.getElementById('slogans_json').value   = JSON.stringify(data.slogans||[]);
+    document.getElementById('slogans_display').value = (data.slogans||[]).join(' · ');
+    if (data.theme_color) setColor(data.theme_color, null);
+    document.getElementById('genResult').style.display = 'block';
+    btn.innerHTML = '<i class="bi bi-arrow-repeat me-2"></i>Regenerate';
+    btn.disabled = false;
+  } catch(e) {
+    btn.innerHTML = '<i class="bi bi-magic me-2"></i>Generate Ad with AI';
+    btn.disabled = false;
+    alert('Generation failed: ' + e.message);
+  }
+}
+function setColor(color, btn) {
+  document.getElementById('theme_color').value = color;
+  document.querySelectorAll('#colorPicker button').forEach(b => b.style.border='3px solid transparent');
+  if (btn) btn.style.border='3px solid white';
+  else {
+    const b = document.querySelector(`[data-color="${color}"]`);
+    if (b) b.style.border='3px solid white';
+  }
+}
+</script>
+{% endblock %}

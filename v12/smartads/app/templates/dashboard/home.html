@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Dashboard — SmartAds{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Welcome back, {{ current_user.name }}! 👋</h1>
+<p class="page-subtitle mb-4">Here's your advertising overview</p>
+<div class="row g-4 mb-5">
+  {% for val,label,cls,icon in [(total_ads,'Total Ads','purple','bi-collection'),(approved_ads,'Approved','green','bi-check-circle'),('₹'+total_spend|int|string,'Total Spend','pink','bi-currency-rupee'),(active_schedules,'Active Now','amber','bi-broadcast')] %}
+  <div class="col-6 col-md-3">
+    <div class="stat-card {{ cls }}">
+      <i class="bi {{ icon }}" style="font-size:1.5rem;color:var(--text-muted);margin-bottom:8px;display:block"></i>
+      <div class="stat-value">{{ val }}</div>
+      <div class="stat-label">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="row g-4">
+  <div class="col-12 col-md-8">
+    <div class="card-modern p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="section-title mb-0">Recent Ads</h5>
+        <a href="{{ url_for('ads.list_ads') }}" class="btn-surface" style="font-size:.78rem">View All</a>
+      </div>
+      {% if ads %}
+      <table class="table-dark-custom">
+        <thead><tr><th>Title</th><th>Format</th><th>Status</th><th>Score</th><th>Actions</th></tr></thead>
+        <tbody>
+          {% for ad in ads %}
+          <tr>
+            <td>
+              <div style="font-weight:600;color:var(--text);font-size:.85rem">{{ ad.title[:35] }}</div>
+              <div style="font-size:.72rem;color:var(--text-muted)">{{ ad.category }}</div>
+            </td>
+            <td>
+              <span style="font-size:.75rem;background:{{ 'rgba(16,185,129,.1)' if ad.ad_format=='poster' else 'rgba(236,72,153,.1)' }};
+                color:{{ '#10b981' if ad.ad_format=='poster' else '#ec4899' }};padding:2px 8px;border-radius:6px">
+                {{ '🖼️ Poster' if ad.ad_format=='poster' else '🎬 Video' }}
+              </span>
+            </td>
+            <td><span class="badge bg-{{ ad.status_badge() }}">{{ ad.status }}</span></td>
+            <td>
+              <div style="display:flex;align-items:center;gap:6px">
+                <div style="width:40px;height:6px;border-radius:3px;background:var(--bg-elevated);overflow:hidden">
+                  <div style="width:{{ ad.engagement_score }}%;height:100%;background:linear-gradient(90deg,#6366f1,#ec4899)"></div>
+                </div>
+                <span style="font-size:.75rem;color:var(--text-muted)">{{ ad.engagement_score }}</span>
+              </div>
+            </td>
+            <td>
+              <div class="d-flex gap-1">
+                <a href="{{ url_for('ads.preview', ad_id=ad.id) }}" class="btn btn-sm btn-surface" title="Preview"><i class="bi bi-eye"></i></a>
+                <a href="{{ url_for('ads.video', ad_id=ad.id) }}" class="btn btn-sm" title="Motion Video" style="background:rgba(236,72,153,.15);border:1px solid rgba(236,72,153,.3);color:#f472b6"><i class="bi bi-film"></i></a>
+                <a href="{{ url_for('video.studio', ad_id=ad.id) }}" class="btn btn-sm" title="D-ID Avatar" style="background:rgba(99,102,241,.15);border:1px solid rgba(99,102,241,.3);color:#818cf8"><i class="bi bi-person-video3"></i></a>
+              </div>
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+      {% else %}
+      <div style="text-align:center;padding:40px;color:var(--text-muted)">
+        <i class="bi bi-collection" style="font-size:3rem;display:block;margin-bottom:12px"></i>
+        No ads yet. <a href="{{ url_for('ads.create') }}" style="color:var(--accent)">Create your first ad!</a>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card-modern p-4 mb-4">
+      <h5 class="section-title mb-3">Quick Actions</h5>
+      {% for label, url, icon, color in [('Create New Ad', url_for('ads.create'), 'bi-plus-circle-fill', '#6366f1'), ('LED Display', url_for('display.index'), 'bi-display', '#10b981'), ('My Schedules', url_for('schedule.index'), 'bi-calendar-week', '#f59e0b'), ('Payment History', url_for('payment.history'), 'bi-receipt', '#ec4899')] %}
+      <a href="{{ url }}" style="display:flex;align-items:center;gap:10px;padding:12px;
+        border-radius:10px;color:var(--text-secondary);text-decoration:none;
+        border:1px solid var(--border);margin-bottom:8px;background:var(--bg-elevated);transition:all .2s"
+        onmouseover="this.style.borderColor='{{ color }}'" onmouseout="this.style.borderColor='var(--border)'">
+        <i class="bi {{ icon }}" style="color:{{ color }};font-size:1.1rem;width:24px"></i>{{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

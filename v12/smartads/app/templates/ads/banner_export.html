@@ -1,0 +1,13 @@
+<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>{{ ad.title }}</title>
+<style>body{margin:0;font-family:sans-serif}
+.banner{background:linear-gradient(135deg,{{ ad.theme_color or '#6366f1' }},{{ ad.theme_color or '#6366f1' }}88);
+padding:40px;min-height:300px;display:flex;flex-direction:column;justify-content:space-between;color:white}
+h1{font-size:2rem;margin:0 0 12px}.offer{background:rgba(255,255,255,.2);padding:8px 20px;border-radius:20px;display:inline-block;margin-top:16px}
+</style></head>
+<body><div class="banner">
+<div><span style="background:rgba(255,255,255,.2);padding:4px 12px;border-radius:20px;font-size:.8rem">{{ ad.category }}</span>
+<h1>{{ ad.title }}</h1><p>{{ ad.generated_text or ad.description }}</p></div>
+<div>{% if ad.offer %}<div class="offer">🏷️ {{ ad.offer }}</div>{% endif %}
+<div style="margin-top:12px;opacity:.7;font-size:.85rem">⚡ SmartAds AI</div>
+</div></div></body></html>

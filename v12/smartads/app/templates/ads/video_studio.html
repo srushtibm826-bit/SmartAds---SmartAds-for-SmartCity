@@ -1,0 +1,616 @@
+{% extends 'base.html' %}
+{% block title %}D-ID Avatar Studio — {{ ad.title }}{% endblock %}
+{% block extra_css %}
+<style>
+.avatar-card {
+  border: 2px solid var(--border); border-radius: 14px; padding: 14px;
+  cursor: pointer; transition: all .2s; text-align: center; background: var(--bg-card);
+}
+.avatar-card:hover { border-color: var(--accent); background: var(--accent-glow); }
+.avatar-card.selected { border-color: var(--accent); background: var(--accent-glow); }
+
+.demo-video-card {
+  border-radius: 16px; overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 40px rgba(99,102,241,.2);
+  border: 1px solid rgba(99,102,241,.25);
+  position: relative;
+}
+.demo-badge {
+  position: absolute; top: 14px; left: 14px; z-index: 10;
+  background: linear-gradient(135deg, #6366f1, #ec4899);
+  color: white; padding: 5px 14px; border-radius: 999px;
+  font-size: .72rem; font-weight: 700; letter-spacing: .5px;
+  display: flex; align-items: center; gap: 6px;
+}
+.ai-glow { animation: aiGlow 2s ease-in-out infinite alternate; }
+@keyframes aiGlow {
+  from { box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 30px rgba(99,102,241,.2); }
+  to   { box-shadow: 0 20px 60px rgba(0,0,0,.6), 0 0 60px rgba(236,72,153,.35); }
+}
+.blink { animation: blink 1.2s infinite; }
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:.2} }
+
+.status-processing { color: var(--info); }
+.status-done       { color: var(--success); }
+.status-error      { color: var(--danger); }
+
+.gen-steps { display: flex; flex-direction: column; gap: 10px; }
+.gen-step  { display: flex; align-items: center; gap: 10px; font-size: .83rem; color: var(--text-secondary); }
+.gen-step i { width: 18px; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="{{ url_for('ads.preview', ad_id=ad.id) }}" class="btn-surface">
+    <i class="bi bi-arrow-left me-1"></i>Back
+  </a>
+  <div>
+    <h1 class="page-title">🤖 D-ID Avatar Studio</h1>
+    <p class="page-subtitle">Generate a real AI talking avatar for "{{ ad.title }}"</p>
+  </div>
+</div>
+
+{% if not api_configured %}
+<div class="card-modern p-5 mb-4" style="border-color:rgba(99,102,241,.3);background:rgba(99,102,241,.05)">
+  <div class="d-flex align-items-start gap-4 flex-wrap">
+    <div style="font-size:3rem">🔑</div>
+    <div>
+      <h4 style="color:var(--text);margin-bottom:6px">Set Up Free D-ID API Key</h4>
+      <p style="color:var(--text-secondary);margin-bottom:16px">
+        Get <strong style="color:white">20 free video credits/month</strong> at
+        <a href="https://studio.d-id.com" target="_blank" style="color:var(--accent)">studio.d-id.com</a>
+        — no credit card required.
+      </p>
+      <div style="font-family:monospace;background:rgba(0,0,0,.4);padding:12px 18px;border-radius:10px;
+           color:#10b981;font-size:.88rem;margin-bottom:16px">
+        DID_API_KEY=your_key_here
+      </div>
+      <a href="https://studio.d-id.com" target="_blank" class="btn-gradient">
+        <i class="bi bi-box-arrow-up-right me-2"></i>Get Free API Key
+      </a>
+    </div>
+  </div>
+</div>
+{% endif %}
+
+<div class="row g-4">
+
+  <!-- ── LEFT: Generator ──────────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-5">
+
+    {% if not api_configured %}
+    <!-- No API key info box -->
+    <div class="card-modern p-0 overflow-hidden mb-4" style="border-color:rgba(245,158,11,.25)">
+      <div style="background:rgba(245,158,11,.08);padding:14px 18px;border-bottom:1px solid rgba(245,158,11,.15)">
+        <div style="font-size:.8rem;font-weight:700;color:var(--warning)">
+          <i class="bi bi-info-circle me-2"></i>Demo Mode Active
+        </div>
+      </div>
+      <div style="padding:16px 18px;font-size:.82rem;color:var(--text-secondary)">
+        The sample AI video below was pre-generated using D-ID for demo purposes.
+        Add your API key to generate custom videos for any ad.
+      </div>
+    </div>
+    {% endif %}
+
+    <div class="card-modern p-4 mb-4">
+      <h5 class="section-title mb-3">
+        <i class="bi bi-person-bounding-box me-2" style="color:var(--accent)"></i>
+        Choose AI Presenter
+      </h5>
+      <div class="row g-2 mb-4" id="avatarGrid">
+        {% for cat, av in all_avatars.items() %}
+        <div class="col-4">
+          <div class="avatar-card {{ 'selected' if cat == ad.category else '' }}"
+               onclick="selectAvatar('{{ cat }}','{{ av.voice_id }}',this)"
+               data-category="{{ cat }}">
+            <div style="font-size:1.8rem">{{ av.emoji }}</div>
+            <div style="font-size:.68rem;font-weight:600;color:var(--text-secondary);margin-top:4px">{{ cat }}</div>
+          </div>
+        </div>
+        {% endfor %}
+      </div>
+
+      <h5 class="section-title mb-2">
+        <i class="bi bi-file-text me-2" style="color:var(--accent)"></i>
+        Ad Script
+        <span style="font-size:.72rem;font-weight:400;color:var(--text-muted);margin-left:8px">Max 400 chars</span>
+      </h5>
+      <textarea class="form-control mb-1" id="scriptText" rows="5" maxlength="400"
+                placeholder="The AI avatar will speak this text aloud..."
+                oninput="updateCharCount()">{{ (ad.generated_text or ad.description or ad.title)[:400] }}</textarea>
+      <div class="d-flex justify-content-between mb-4">
+        <span style="font-size:.72rem;color:var(--text-muted)">
+          <i class="bi bi-lightbulb me-1"></i>Tip: Write conversationally — it will be spoken
+        </span>
+        <span id="charCount" style="font-size:.72rem;color:var(--text-muted)">0/400</span>
+      </div>
+
+      <button class="btn-gradient w-100 py-3 justify-content-center" id="generateBtn"
+              onclick="generateVideo()" style="font-size:.95rem">
+        <i class="bi bi-play-circle-fill me-2"></i>Generate AI Video
+      </button>
+
+      {% if not api_configured %}
+      <div class="mt-2 text-center" style="font-size:.75rem;color:var(--warning)">
+        <i class="bi bi-exclamation-triangle me-1"></i>
+        DID_API_KEY not set — add it to .env to generate new videos
+      </div>
+      {% endif %}
+    </div>
+
+    <!-- Credits display -->
+    <div id="creditsBox" class="card-modern p-3 mb-4" style="display:none">
+      <div class="d-flex justify-content-between align-items-center">
+        <span style="font-size:.8rem;color:var(--text-muted)">D-ID Credits Remaining</span>
+        <span id="creditsVal" style="font-family:'Syne',sans-serif;font-size:1.4rem;font-weight:800;color:#10b981">—</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: Video Result ────────────────────────────────────────────── -->
+  <div class="col-12 col-lg-7">
+
+    <!-- ── DEMO video (pre-generated) shown when available ──────────────── -->
+    {% if demo_video and demo_video.result_url %}
+    <div class="demo-video-card ai-glow mb-4" id="demoVideoSection">
+      <div class="demo-badge">
+        <span style="width:7px;height:7px;border-radius:50%;background:white;display:inline-block" class="blink"></span>
+        🤖 AI Generated Video
+      </div>
+
+      {% set video_src = demo_video.result_url if demo_video.result_url.startswith('http') else (request.host_url.rstrip('/') + demo_video.result_url) %}
+
+      <video id="demoVideoPlayer" controls autoplay muted loop
+             style="width:100%;display:block;background:#000;max-height:400px"
+             poster=""
+             onerror="this.style.display='none';document.getElementById('videoNotAvailable').style.display='flex'">
+        <source src="{{ demo_video.result_url }}" type="video/mp4">
+        <source src="{{ demo_video.result_url }}" type="video/webm">
+        Your browser does not support video playback.
+      </video>
+
+      <!-- Shown when video file not yet placed in static/demo_videos/ -->
+      <div id="videoNotAvailable" style="display:none;background:var(--bg-elevated);
+           min-height:280px;align-items:center;justify-content:center;flex-direction:column;
+           gap:16px;text-align:center;padding:40px">
+        <div style="font-size:3rem">📁</div>
+        <div style="font-weight:700;color:var(--text);font-size:1rem">Demo Video Not Yet Placed</div>
+        <div style="color:var(--text-secondary);font-size:.85rem;max-width:400px;line-height:1.6">
+          Copy your pre-generated video file to:<br>
+          <code style="background:rgba(0,0,0,.4);padding:6px 12px;border-radius:8px;
+               color:#10b981;font-size:.82rem;display:inline-block;margin-top:8px">
+            app/static/demo_videos/{{ demo_video.result_url.split('/')[-1] }}
+          </code>
+        </div>
+        <div style="font-size:.78rem;color:var(--text-muted)">
+          Then restart the app — the video will play automatically here
+        </div>
+      </div>
+
+      <div style="background:#0d0d18;padding:20px 24px">
+        <div class="d-flex justify-content-between align-items-start flex-wrap gap-3">
+          <div>
+            <div style="font-weight:700;color:var(--text);font-size:.95rem;margin-bottom:4px">
+              ✅ AI Avatar Video — Ready
+            </div>
+            <div style="font-size:.78rem;color:var(--text-muted)">
+              <i class="bi bi-robot me-1"></i>{{ demo_video.avatar_label or 'D-ID AI Avatar' }}
+              {% if demo_video.completed_at %}
+              · Generated {{ demo_video.completed_at.strftime('%d %b %Y, %H:%M') }}
+              {% endif %}
+            </div>
+          </div>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="{{ demo_video.result_url }}" download="smartad_{{ ad.id }}.mp4"
+               class="btn-gradient btn-sm" style="font-size:.8rem;padding:8px 16px">
+              <i class="bi bi-download me-1"></i>Download MP4
+            </a>
+            <button onclick="toggleMute()" id="muteBtn"
+                    class="btn-surface btn-sm" style="font-size:.8rem;padding:8px 12px">
+              <i class="bi bi-volume-mute"></i>
+            </button>
+          </div>
+        </div>
+
+        {% if demo_video.script_text %}
+        <div class="mt-3 p-3 rounded" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06)">
+          <div style="font-size:.68rem;text-transform:uppercase;letter-spacing:.5px;color:var(--text-muted);margin-bottom:6px">
+            Script Spoken by AI Avatar
+          </div>
+          <div style="font-size:.8rem;color:var(--text-secondary);font-style:italic;line-height:1.6">
+            "{{ demo_video.script_text[:250] }}{% if demo_video.script_text|length > 250 %}...{% endif %}"
+          </div>
+        </div>
+        {% endif %}
+
+        <div class="mt-3 p-3 rounded" style="background:rgba(99,102,241,.08);border:1px solid rgba(99,102,241,.15)">
+          <div style="font-size:.75rem;color:var(--text-secondary)">
+            <i class="bi bi-info-circle me-2" style="color:var(--accent)"></i>
+            This AI avatar video was generated using <strong style="color:white">D-ID</strong> —
+            a real AI human face lip-synced to your ad script.
+            Generate a new one below using your own API key.
+          </div>
+        </div>
+      </div>
+    </div>
+    {% endif %}
+
+    <!-- ── Generation Status ──────────────────────────────────────────── -->
+    <div id="generationStatus" class="card-modern p-4 mb-4 d-none">
+      <h5 class="section-title mb-3">
+        <i class="bi bi-hourglass-split me-2" style="color:var(--accent)"></i>
+        Generating Your AI Video...
+      </h5>
+      <div style="height:6px;background:var(--bg-elevated);border-radius:3px;overflow:hidden;margin-bottom:16px">
+        <div id="genProgressBar" style="height:100%;width:8%;background:linear-gradient(90deg,#6366f1,#ec4899);
+             border-radius:3px;transition:width 2s ease"></div>
+      </div>
+      <div id="statusText" style="font-size:.85rem;color:var(--text-secondary);margin-bottom:16px">
+        <span class="blink" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--info);margin-right:8px"></span>
+        Submitting to D-ID...
+      </div>
+      <div class="gen-steps">
+        <div class="gen-step" id="gstep1"><i class="bi bi-circle text-muted"></i>Uploading avatar image to D-ID</div>
+        <div class="gen-step" id="gstep2"><i class="bi bi-circle text-muted"></i>Processing voice synthesis</div>
+        <div class="gen-step" id="gstep3"><i class="bi bi-circle text-muted"></i>Rendering lip-sync video</div>
+        <div class="gen-step" id="gstep4"><i class="bi bi-circle text-muted"></i>Finalising MP4</div>
+      </div>
+      <div class="mt-4 p-3 rounded" style="background:var(--bg-elevated);font-size:.78rem;color:var(--text-muted)">
+        <i class="bi bi-clock me-2"></i>D-ID free tier takes <strong style="color:white">60–90 seconds</strong>.
+        Page updates automatically — you can leave it open.
+      </div>
+    </div>
+
+    <!-- ── New Video Result ──────────────────────────────────────────── -->
+    <div id="videoResult" class="d-none mb-4">
+      <div class="demo-video-card ai-glow">
+        <div class="demo-badge">
+          <span style="width:7px;height:7px;border-radius:50%;background:white;display:inline-block" class="blink"></span>
+          🤖 Just Generated — AI Avatar
+        </div>
+        <video id="resultVideo" controls autoplay
+               style="width:100%;display:block;background:#000;max-height:400px"></video>
+        <div style="background:#0d0d18;padding:20px 24px">
+          <div class="d-flex gap-3 flex-wrap">
+            <a id="downloadBtn" href="#" download class="btn-gradient">
+              <i class="bi bi-download me-2"></i>Download MP4
+            </a>
+            <button onclick="generateAnother()" class="btn-surface">
+              <i class="bi bi-arrow-repeat me-1"></i>Generate Another
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── Error ─────────────────────────────────────────────────────── -->
+    <div id="videoError" class="d-none mb-4">
+      <div class="card-modern p-4" style="border-color:rgba(239,68,68,.3)">
+        <div style="color:var(--danger);font-weight:700;margin-bottom:8px">
+          <i class="bi bi-exclamation-triangle me-2"></i>Generation Failed
+        </div>
+        <div id="errorMsg" style="color:var(--text-secondary);font-size:.85rem;margin-bottom:16px"></div>
+        <div id="recoveryPanel" class="d-none">
+          <div class="p-3 rounded mb-3" style="background:rgba(245,158,11,.08);border:1px solid rgba(245,158,11,.2)">
+            <div style="font-size:.8rem;color:var(--warning);margin-bottom:6px;font-weight:700">
+              <i class="bi bi-info-circle me-1"></i>D-ID Queue Delay
+            </div>
+            <div style="font-size:.75rem;color:var(--text-secondary)">
+              Talk ID: <code id="talkIdDisplay" style="color:var(--accent)"></code><br>
+              Video may still be processing. Click "Check if Ready" in 30 seconds.
+            </div>
+          </div>
+          <button class="btn-gradient btn-sm" id="checkAgainBtn" onclick="checkVideoReady()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Check if Ready
+          </button>
+        </div>
+        <button onclick="generateAnother()" class="btn-surface btn-sm">
+          <i class="bi bi-arrow-repeat me-1"></i>Try Again
+        </button>
+      </div>
+    </div>
+
+    <!-- ── Past Videos History ───────────────────────────────────────── -->
+    {% if past_videos %}
+    <div class="card-modern p-0 overflow-hidden">
+      <div class="p-4 pb-3" style="border-bottom:1px solid var(--border)">
+        <div class="d-flex justify-content-between align-items-center">
+          <h5 class="section-title mb-0">
+            <i class="bi bi-clock-history me-2" style="color:var(--accent)"></i>
+            Generated Videos
+          </h5>
+          <span style="font-size:.72rem;color:var(--text-muted)">{{ past_videos|length }} video(s)</span>
+        </div>
+      </div>
+      {% for v in past_videos %}
+      <div class="d-flex align-items-center gap-3 p-3" style="border-bottom:1px solid rgba(255,255,255,.04)"
+           id="histRow{{ v.id }}">
+        <div style="width:9px;height:9px;border-radius:50%;flex-shrink:0;
+          background:{{ {'done':'var(--success)','error':'var(--danger)','processing':'var(--info)'}.get(v.status,'var(--warning)') }};
+          {{ 'animation:blink 1.2s infinite' if v.status=='processing' else '' }}">
+        </div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:.82rem;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">
+            {{ v.avatar_label or 'AI Avatar' }}
+            {% if v.demo_video_url %}
+            <span style="font-size:.65rem;background:linear-gradient(135deg,#6366f1,#ec4899);
+              -webkit-background-clip:text;-webkit-text-fill-color:transparent;font-weight:700;margin-left:6px">
+              DEMO
+            </span>
+            {% endif %}
+          </div>
+          <div style="font-size:.7rem;color:var(--text-muted)">{{ v.created_at.strftime('%d %b %Y, %H:%M') }}</div>
+        </div>
+        <span class="badge bg-{{ v.status_badge()[0] }}" style="font-size:.65rem;flex-shrink:0">
+          {{ v.status_badge()[1] }}
+        </span>
+        <div class="d-flex gap-1 flex-shrink-0">
+          {% if v.result_url %}
+          <a href="{{ v.result_url }}" target="_blank"
+             class="btn btn-sm btn-surface" style="font-size:.68rem;padding:4px 10px">
+            <i class="bi bi-play-fill me-1"></i>Watch
+          </a>
+          <a href="{{ v.result_url }}" download
+             class="btn btn-sm btn-gradient" style="font-size:.68rem;padding:4px 10px">
+            <i class="bi bi-download me-1"></i>MP4
+          </a>
+          {% elif v.status in ('processing','error') and v.did_talk_id and not v.did_talk_id.startswith('demo_') %}
+          <button class="btn btn-sm btn-surface" style="font-size:.68rem;padding:4px 10px"
+                  onclick="recoverFromHistory('{{ v.did_talk_id }}', {{ v.id }}, this)">
+            <i class="bi bi-arrow-clockwise me-1"></i>Check
+          </button>
+          {% endif %}
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ── State ─────────────────────────────────────────────────────────────────
+let selCategory = {{ ad.category|tojson }};
+let selVoice    = {{ (avatar.voice_id if avatar else 'en-IN-NeerjaNeural')|tojson }};
+let currentVideoId = null;
+let pollTimer      = null;
+let elapsedTimer   = null;
+let elapsedSec     = 0;
+window._submittedTalkId = null;
+window._currentVideoId  = null;
+
+// ── Init ──────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', () => {
+  updateCharCount();
+  {% if api_configured %}fetchCredits();{% endif %}
+
+  // Auto-unmute demo video after interaction
+  const demoVid = document.getElementById('demoVideoPlayer');
+  if (demoVid) {
+    document.addEventListener('click', () => {
+      demoVid.muted = false;
+      demoVid.volume = 0.8;
+    }, { once: true });
+  }
+});
+
+// ── Mute toggle ───────────────────────────────────────────────────────────
+function toggleMute() {
+  const vid = document.getElementById('demoVideoPlayer');
+  if (!vid) return;
+  vid.muted = !vid.muted;
+  const btn = document.getElementById('muteBtn');
+  btn.innerHTML = vid.muted
+    ? '<i class="bi bi-volume-mute"></i>'
+    : '<i class="bi bi-volume-up"></i>';
+}
+
+// ── Char counter ───────────────────────────────────────────────────────────
+function updateCharCount() {
+  const len = document.getElementById('scriptText').value.length;
+  const el  = document.getElementById('charCount');
+  el.textContent = `${len}/400`;
+  el.style.color = len > 360 ? 'var(--warning)' : 'var(--text-muted)';
+}
+
+// ── Avatar selection ──────────────────────────────────────────────────────
+function selectAvatar(cat, voice, el) {
+  selCategory = cat; selVoice = voice;
+  document.querySelectorAll('.avatar-card').forEach(c => c.classList.remove('selected'));
+  el.classList.add('selected');
+}
+
+// ── Credits ──────────────────────────────────────────────────────────────
+async function fetchCredits() {
+  try {
+    const r = await fetch('{{ url_for("video.credits") }}');
+    const d = await r.json();
+    if (d.valid) {
+      document.getElementById('creditsBox').style.display = 'block';
+      document.getElementById('creditsVal').textContent = d.credits;
+    }
+  } catch(e) {}
+}
+
+// ── Generate Video ────────────────────────────────────────────────────────
+async function generateVideo() {
+  const script = document.getElementById('scriptText').value.trim();
+  if (!script) { alert('Please enter a script.'); return; }
+
+  document.getElementById('generationStatus').classList.remove('d-none');
+  document.getElementById('videoResult').classList.add('d-none');
+  document.getElementById('videoError').classList.add('d-none');
+  document.getElementById('generateBtn').disabled = true;
+  document.getElementById('generateBtn').innerHTML =
+    '<span class="spinner-border spinner-border-sm me-2"></span>Submitting to D-ID...';
+  document.getElementById('genProgressBar').style.width = '12%';
+
+  const form = new FormData();
+  form.append('script', script);
+  form.append('avatar_category', selCategory);
+
+  try {
+    const resp = await fetch('{{ url_for("video.generate", ad_id=ad.id) }}', {method:'POST', body:form});
+    const data = await resp.json();
+
+    if (!data.ok) {
+      const isTimeout = false;
+      showError(data.error || 'Generation failed.', isTimeout, null, null);
+      return;
+    }
+
+    currentVideoId = data.video_id;
+    window._submittedTalkId = data.talk_id;
+    window._currentVideoId  = data.video_id;
+
+    markStep(1);
+    document.getElementById('genProgressBar').style.width = '30%';
+    document.getElementById('statusText').innerHTML =
+      '<span class="blink" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--info);margin-right:8px"></span>Processing avatar + voice...';
+
+    startPolling(data.poll_url);
+    startElapsed();
+
+  } catch(e) {
+    showError('Network error: ' + e.message);
+  }
+}
+
+// ── Polling ───────────────────────────────────────────────────────────────
+function startPolling(url) {
+  pollTimer = setInterval(() => pollStatus(url), 5000);
+  setTimeout(() => pollStatus(url), 3000);
+}
+
+async function pollStatus(url) {
+  try {
+    const resp = await fetch(url);
+    const data = await resp.json();
+    updateSteps(data.status);
+
+    if (data.status === 'done' && data.result_url) {
+      stopAll();
+      showVideo(data.result_url);
+    } else if (data.status === 'error') {
+      stopAll();
+      const isTimeout = (data.error||'').toLowerCase().includes('timed out');
+      showError(data.error || 'D-ID error.', isTimeout, window._submittedTalkId, currentVideoId);
+    }
+  } catch(e) {}
+}
+
+function updateSteps(status) {
+  const pct = {created:30, processing:60, done:100, error:100}[status] || 20;
+  document.getElementById('genProgressBar').style.width = pct + '%';
+  if (status === 'processing') { markStep(1); markStep(2); markStep(3); }
+  if (status === 'done')       { markStep(1); markStep(2); markStep(3); markStep(4); }
+}
+
+function markStep(n) {
+  const el = document.getElementById(`gstep${n}`);
+  if (el) {
+    el.querySelector('i').className = 'bi bi-check-circle-fill text-success';
+    el.style.color = 'var(--text)';
+  }
+}
+
+function stopAll() {
+  if (pollTimer)   { clearInterval(pollTimer);   pollTimer   = null; }
+  if (elapsedTimer){ clearInterval(elapsedTimer); elapsedTimer = null; }
+  document.getElementById('generateBtn').disabled = false;
+  document.getElementById('generateBtn').innerHTML = '<i class="bi bi-play-circle-fill me-2"></i>Generate AI Video';
+}
+
+function startElapsed() {
+  elapsedSec = 0;
+  elapsedTimer = setInterval(() => {
+    elapsedSec++;
+    document.getElementById('statusText').innerHTML =
+      `<span class="blink" style="display:inline-block;width:8px;height:8px;border-radius:50%;background:var(--info);margin-right:8px"></span>`
+      + `Rendering AI video... (${elapsedSec}s)`;
+  }, 1000);
+}
+
+// ── Show results ──────────────────────────────────────────────────────────
+function showVideo(url) {
+  document.getElementById('generationStatus').classList.add('d-none');
+  document.getElementById('videoResult').classList.remove('d-none');
+
+  // Hide demo section so new video is prominent
+  const demo = document.getElementById('demoVideoSection');
+  if (demo) demo.style.display = 'none';
+
+  const vid = document.getElementById('resultVideo');
+  vid.src = url;
+  vid.load();
+  vid.play().catch(() => {});
+
+  const dl = document.getElementById('downloadBtn');
+  dl.href = url;
+  dl.download = `smartad_{{ ad.id }}_${Date.now()}.mp4`;
+
+  fetchCredits();
+}
+
+function showError(msg, isTimeout=false, talkId=null, videoId=null) {
+  document.getElementById('generationStatus').classList.add('d-none');
+  document.getElementById('videoError').classList.remove('d-none');
+  document.getElementById('errorMsg').textContent = msg;
+
+  const recovPanel = document.getElementById('recoveryPanel');
+  if (isTimeout && talkId) {
+    recovPanel.classList.remove('d-none');
+    document.getElementById('talkIdDisplay').textContent = talkId;
+    window._currentVideoId  = videoId;
+    setTimeout(() => checkVideoReady(), 30000);
+  } else {
+    recovPanel.classList.add('d-none');
+  }
+}
+
+async function checkVideoReady() {
+  const btn = document.getElementById('checkAgainBtn');
+  if (btn) { btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Checking...'; btn.disabled = true; }
+  try {
+    const url = `/video/{{ ad.id }}/recover/${window._currentVideoId}`;
+    const resp = await fetch(url, {method:'POST'});
+    const data = await resp.json();
+    if (data.ok && data.result_url) {
+      showVideo(data.result_url);
+    } else {
+      document.getElementById('errorMsg').textContent = data.message || 'Still processing. Try again in 30 seconds.';
+      if (btn) { btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Check if Ready'; btn.disabled = false; }
+    }
+  } catch(e) {
+    if (btn) { btn.innerHTML = '<i class="bi bi-arrow-clockwise me-1"></i>Check if Ready'; btn.disabled = false; }
+  }
+}
+
+function generateAnother() {
+  document.getElementById('videoResult').classList.add('d-none');
+  document.getElementById('videoError').classList.add('d-none');
+  const demo = document.getElementById('demoVideoSection');
+  if (demo) demo.style.display = 'block';
+}
+
+async function recoverFromHistory(talkId, videoId, btn) {
+  const orig = btn.innerHTML;
+  btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+  btn.disabled  = true;
+  try {
+    const resp = await fetch(`/video/{{ ad.id }}/recover/${videoId}`, {method:'POST'});
+    const data = await resp.json();
+    if (data.ok && data.result_url) {
+      showVideo(data.result_url);
+    } else {
+      btn.innerHTML = orig; btn.disabled = false;
+    }
+  } catch(e) { btn.innerHTML = orig; btn.disabled = false; }
+}
+</script>
+{% endblock %}

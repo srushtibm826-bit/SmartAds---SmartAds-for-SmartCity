@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% block title %}Admin Dashboard{% endblock %}
+{% block content %}
+<h1 class="page-title mb-1">Admin Dashboard</h1>
+<p class="page-subtitle mb-4">System overview</p>
+<div class="row g-4 mb-4">
+  {% for val,label,cls,icon in [(total_users,'Total Users','purple','bi-people'),(total_ads,'Total Ads','pink','bi-collection'),(pending_ads,'Pending Review','amber','bi-hourglass-split'),('₹'+total_rev|int|string,'Total Revenue','green','bi-currency-rupee')] %}
+  <div class="col-6 col-md-3">
+    <div class="stat-card {{ cls }}">
+      <i class="bi {{ icon }}" style="font-size:1.5rem;color:var(--text-muted);margin-bottom:8px;display:block"></i>
+      <div class="stat-value">{{ val }}</div>
+      <div class="stat-label">{{ label }}</div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+<div class="row g-4">
+  <div class="col-12 col-md-8">
+    <div class="card-modern p-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="section-title mb-0">Recent Ads</h5>
+        <a href="{{ url_for('admin.ads') }}" class="btn-surface btn-sm" style="font-size:.78rem">View All</a>
+      </div>
+      <table class="table-dark-custom">
+        <thead><tr><th>Ad</th><th>Format</th><th>User</th><th>Status</th><th>Date</th><th>Action</th></tr></thead>
+        <tbody>
+          {% for ad in recent_ads %}
+          <tr>
+            <td><div style="font-weight:600;color:var(--text);font-size:.82rem">{{ ad.title[:35] }}</div></td>
+            <td><span style="font-size:.75rem">{{ '🖼️ Poster' if ad.ad_format=='poster' else '🎬 Video' }}</span></td>
+            <td style="font-size:.78rem;color:var(--text-muted)">{{ ad.owner.name if ad.owner else '—' }}</td>
+            <td><span class="badge bg-{{ ad.status_badge() }}">{{ ad.status }}</span></td>
+            <td style="font-size:.75rem;color:var(--text-muted)">{{ ad.created_at.strftime('%d %b') }}</td>
+            <td>
+              {% if ad.status=='pending' %}
+              <form method="POST" action="{{ url_for('admin.approve_ad', ad_id=ad.id) }}" style="display:inline">
+                <button type="submit" class="btn btn-sm btn-success py-0 px-2"><i class="bi bi-check-lg"></i></button>
+              </form>
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card-modern p-4">
+      <h5 class="section-title mb-3">Quick Links</h5>
+      {% for label, url, icon in [('All Ads (with Filters)', url_for('admin.ads'), 'bi-collection'), ('Manage Users', url_for('admin.users'), 'bi-people'), ('Payment Records', url_for('admin.payments'), 'bi-credit-card'), ('Ad Schedules', url_for('admin.schedules'), 'bi-calendar3')] %}
+      <a href="{{ url }}" style="display:flex;align-items:center;gap:10px;padding:12px;
+        border-radius:10px;color:var(--text-secondary);text-decoration:none;
+        border:1px solid var(--border);margin-bottom:8px;transition:all .2s;background:var(--bg-elevated)"
+        onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+        <i class="bi {{ icon }}" style="color:var(--accent)"></i>{{ label }}
+      </a>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %}

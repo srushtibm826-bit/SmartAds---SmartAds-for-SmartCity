@@ -1,0 +1,86 @@
+{% extends 'base.html' %}
+{% block title %}Preview — {{ ad.title }}{% endblock %}
+{% block content %}
+<div class="d-flex align-items-center gap-3 mb-4 flex-wrap">
+  <a href="{{ url_for('ads.list_ads') }}" class="btn-surface"><i class="bi bi-arrow-left me-1"></i>My Ads</a>
+  <h1 class="page-title mb-0">{{ ad.title }}</h1>
+  <span class="badge bg-{{ ad.status_badge() }}">{{ ad.status }}</span>
+</div>
+<div class="row g-4">
+  <div class="col-12 col-md-8">
+    <!-- Ad Banner Preview -->
+    <div style="border-radius:16px;overflow:hidden;background:linear-gradient(135deg,{{ ad.theme_color or '#6366f1' }},{{ ad.theme_color or '#6366f1' }}88);
+      padding:40px;min-height:300px;display:flex;flex-direction:column;justify-content:space-between;
+      box-shadow:0 20px 60px rgba(0,0,0,.4)">
+      <div>
+        <span style="background:rgba(255,255,255,.2);color:white;padding:4px 12px;border-radius:20px;font-size:.78rem;font-weight:600">
+          {{ ad.category }}
+        </span>
+        <h2 style="color:white;font-family:'Syne',sans-serif;font-size:2rem;font-weight:800;margin-top:16px">{{ ad.title }}</h2>
+        <p style="color:rgba(255,255,255,.85);margin-top:8px;line-height:1.7">{{ ad.generated_text or ad.description }}</p>
+      </div>
+      <div>
+        {% for slogan in ad.get_slogans() %}
+        <div style="font-style:italic;color:rgba(255,255,255,.7);font-size:.9rem;margin-top:8px">"{{ slogan }}"</div>
+        {% endfor %}
+        {% if ad.offer %}
+        <div style="margin-top:16px;background:rgba(255,255,255,.15);color:white;
+          padding:8px 20px;border-radius:20px;display:inline-block;font-weight:700">
+          🏷️ {{ ad.offer }}
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  <div class="col-12 col-md-4">
+    <div class="card-modern p-4 mb-3">
+      <h5 class="section-title mb-3">Ad Details</h5>
+      {% for label, val in [('Product', ad.product_name),('Category', ad.category),('Format', ('🖼️ Poster' if ad.ad_format=='poster' else '🎬 Video')),('Location', ad.location or '—'),('Score', ad.engagement_score|string+'/100'),('Amount', '₹'+ad.amount_paid|int|string if ad.amount_paid else '—')] %}
+      <div class="d-flex justify-content-between py-2" style="border-bottom:1px solid var(--border);font-size:.82rem">
+        <span style="color:var(--text-muted)">{{ label }}</span>
+        <span style="color:var(--text);font-weight:600">{{ val }}</span>
+      </div>
+      {% endfor %}
+    </div>
+    <div class="card-modern p-4">
+      <h5 class="section-title mb-3">Actions</h5>
+      <div class="d-flex flex-column gap-2">
+        <a href="{{ url_for('ads.download', ad_id=ad.id) }}" class="btn-surface w-100 justify-content-center"><i class="bi bi-download me-2"></i>Download Banner</a>
+        {% if ad.payment_status == 'paid' %}
+        {% set payment = ad.payments.all()|last if ad.payments.count() > 0 else none %}
+        {% if payment %}
+        <a href="{{ url_for('payment.download_receipt', payment_id=payment.id) }}"
+           class="btn-surface w-100 justify-content-center"
+           style="border-color:rgba(99,102,241,.3);color:#818cf8">
+          <i class="bi bi-file-earmark-pdf me-2"></i>Download Receipt (PDF)
+        </a>
+        {% endif %}
+        {% endif %}
+        <div style="background:var(--bg-elevated);border:1px solid var(--border);border-radius:12px;padding:14px">
+          <div style="font-size:.72rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">
+            <i class="bi bi-camera-video me-1"></i>Video Options
+          </div>
+          <div class="d-flex flex-column gap-2">
+            <a href="{{ url_for('ads.video', ad_id=ad.id) }}" class="btn btn-sm w-100"
+               style="background:linear-gradient(135deg,#ec4899,#f97316);color:white;text-align:left;padding:10px 14px">
+              <i class="bi bi-film me-2"></i>🎬 Cinematic Motion Video
+              <div style="font-size:.65rem;opacity:.8;font-weight:400">Animated 15s reel</div>
+            </a>
+            <a href="{{ url_for('video.studio', ad_id=ad.id) }}" class="btn btn-sm w-100"
+               style="background:linear-gradient(135deg,#6366f1,#8b5cf6);color:white;text-align:left;padding:10px 14px">
+              <i class="bi bi-person-video3 me-2"></i>🤖 D-ID Avatar Video
+              <div style="font-size:.65rem;opacity:.8;font-weight:400">Real AI human speaks ad</div>
+            </a>
+          </div>
+        </div>
+        {% if ad.status == 'approved' %}
+        <a href="{{ url_for('schedule.new_schedule', ad_id=ad.id) }}" class="btn-gradient w-100 justify-content-center"><i class="bi bi-calendar-plus me-2"></i>Schedule Ad</a>
+        {% endif %}
+        {% if ad.payment_status != 'paid' %}
+        <a href="{{ url_for('ads.choose_format', ad_id=ad.id) }}" class="btn-gradient w-100 justify-content-center"><i class="bi bi-credit-card me-2"></i>Pay & Submit</a>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

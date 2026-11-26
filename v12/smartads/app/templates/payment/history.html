@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block title %}Payment History{% endblock %}
+{% block content %}
+<h1 class="page-title mb-4">Payment History</h1>
+<div class="card-modern p-0 overflow-hidden">
+  {% if payments %}
+  <table class="table-dark-custom">
+    <thead><tr><th>Transaction ID</th><th>Ad</th><th>Format</th><th>Amount</th><th>Method</th><th>Date</th><th>Receipt</th></tr></thead>
+    <tbody>
+      {% for p in payments %}
+      <tr>
+        <td style="font-family:monospace;font-size:.78rem;color:var(--accent)">{{ p.transaction_id }}</td>
+        <td style="font-size:.82rem;color:var(--text)">{{ p.advertisement.title[:30] if p.advertisement else '—' }}</td>
+        <td style="font-size:.78rem">
+          {% if p.advertisement %}
+            {{ '🖼️ Poster' if p.advertisement.ad_format=='poster' else '🎬 Video' }}
+          {% endif %}
+        </td>
+        <td style="font-weight:700;color:var(--text)">₹{{ p.amount|int }}</td>
+        <td style="font-size:.78rem;color:var(--text-muted)">{{ p.method }}</td>
+        <td style="font-size:.78rem;color:var(--text-muted)">{{ p.created_at.strftime('%d %b %Y %H:%M') }}</td>
+        <td>
+          <a href="{{ url_for('payment.download_receipt', payment_id=p.id) }}"
+             class="btn btn-sm btn-surface" title="Download PDF Receipt"
+             style="font-size:.72rem;background:rgba(99,102,241,.12);border:1px solid rgba(99,102,241,.25);color:#818cf8">
+            <i class="bi bi-file-earmark-pdf me-1"></i>PDF
+          </a>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+  {% else %}
+  <div style="text-align:center;padding:60px;color:var(--text-muted)">
+    <i class="bi bi-receipt" style="font-size:3rem;display:block;margin-bottom:12px"></i>
+    No payments yet.
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
